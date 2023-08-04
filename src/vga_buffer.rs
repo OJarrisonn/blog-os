@@ -16,7 +16,9 @@ lazy_static! {
     });
 }
 
-// Defining our colors
+
+
+// Defining our colors ============================================================================================
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -40,6 +42,7 @@ pub enum Color {
 }
 
 
+
 // Defining the structure to store a full color code (bg + fg)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
@@ -52,7 +55,8 @@ impl ColorCode {
 }
 
 
-// Defining the TextBuffer
+
+// Defining the TextBuffer ==================================================================================
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 struct ScreenChar {
@@ -68,7 +72,8 @@ struct Buffer {
     chars: [[Volatile<ScreenChar>; BUFFER_WIDTH]; BUFFER_HEIGHT],
 }
 
-// A Writer "object"
+
+// Defining the Writer =====================================================================================
 pub struct Writer {
     column_position: usize,
     color_code: ColorCode,
@@ -79,7 +84,7 @@ impl Writer {
     pub fn write_string(&mut self, s: &str) {
         for byte in s.bytes() {
             match byte {
-                0x20..=0x7e | b'\n' => self.write_byte(byte),
+                0x20..=0x7e | b'\n' | b'\t' | 8 => self.write_byte(byte),
                 _ => self.write_byte(0xfe)
             }
         }
@@ -88,13 +93,15 @@ impl Writer {
     pub fn write_byte(&mut self, byte: u8) {
         match byte {
             b'\n' => self.new_line(),
+            b'\t' => self.write_string("    "),
+            8 => self.backspace(),
             byte => {
-                if self.column_position >= BUFFER_WIDTH {
+                if self.column_position >= BUFFER_WIDTH - 1 {
                     self.new_line();
                 }
 
                 let row = BUFFER_HEIGHT - 1;
-                let col = self.column_position;
+                let mut col = self.column_position;
 
                 let color_code = self.color_code;
                 self.buffer.chars[row][col].write(ScreenChar {
@@ -102,11 +109,43 @@ impl Writer {
                     color_code
                 });
                 self.column_position += 1;
+                col += 1;
+                let mut sc = self.buffer.chars[row][col].read();
+                sc.color_code = ColorCode::new(Color::Black, Color::DarkGray);
+                self.buffer.chars[row][col].write(sc);
+            
             }
         }
     }
 
+    fn backspace(&mut self) {
+        let row = BUFFER_HEIGHT - 1;
+
+        if self.column_position > 0 {
+            let mut sc = self.buffer.chars[row][self.column_position].read();
+            
+            sc.color_code = ColorCode::new(Color::Black, Color::Black);
+
+            self.buffer.chars[row][self.column_position].write(sc);
+            
+            self.column_position -= 1;
+            self.buffer.chars[row][self.column_position].write(ScreenChar { 
+                ascii_character: b' ', 
+                color_code: ColorCode::new(Color::Black, Color::DarkGray) 
+            });
+        }
+
+    }
+
+    pub fn set_foreground_color(&mut self, color: Color) {
+        self.color_code = ColorCode::new(color, Color::Black);
+    }
+
     fn new_line(&mut self) {
+        self.buffer.chars[BUFFER_HEIGHT - 1][self.column_position].write(ScreenChar { 
+            ascii_character: b' ', color_code: ColorCode::new(Color::Black, Color::Black)  
+        });
+
         for row in 1..BUFFER_HEIGHT {
             for col in 0..BUFFER_WIDTH {
                 let character = self.buffer.chars[row][col].read();
@@ -114,7 +153,12 @@ impl Writer {
             }
         }
         self.clear_row(BUFFER_HEIGHT - 1);
+
         self.column_position = 0;
+
+        self.buffer.chars[BUFFER_HEIGHT - 1][self.column_position].write(ScreenChar { 
+            ascii_character: b' ', color_code: ColorCode::new(Color::Black, Color::DarkGray)  
+        });
     }
 
     fn clear_row(&mut self, row: usize) {
@@ -129,7 +173,7 @@ impl Writer {
 }
 
 
-// Implementing formating macros
+// Implementing formating macros ==========================================================================
 impl fmt::Write for Writer {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.write_string(s);
@@ -160,7 +204,7 @@ pub fn _print(args: fmt::Arguments) {
 }
 
 
-// Unit test zone
+// Unit test zone ============================================================================================
 #[test_case]
 fn test_println_simple() {
     println!("test_println_simple output");

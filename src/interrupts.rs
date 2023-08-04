@@ -1,7 +1,8 @@
+use pc_keyboard::KeyCode;
 use pic8259::ChainedPics;
-use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
+use x86_64::{structures::idt::{InterruptDescriptorTable, InterruptStackFrame}, instructions::interrupts};
 
-use crate::{println, gdt, print};
+use crate::{println, gdt, print, vga_buffer::{WRITER, Color}};
 use lazy_static::lazy_static;
 
 lazy_static! {
@@ -91,7 +92,32 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
         if let Some(key) = keyboard.process_keyevent(key_event) {
             match key {
                 DecodedKey::Unicode(character) => print!("{}", character),
-                DecodedKey::RawKey(key) => print!("{:?}", key)
+                DecodedKey::RawKey(key) => match key  {
+                    KeyCode::F1 => interrupts::without_interrupts(|| { 
+                        WRITER.lock().set_foreground_color(Color::White); 
+                    }),KeyCode::F2 => interrupts::without_interrupts(|| { 
+                        WRITER.lock().set_foreground_color(Color::Red); 
+                    }), 
+                    KeyCode::F3 => interrupts::without_interrupts(|| { 
+                        WRITER.lock().set_foreground_color(Color::Yellow); 
+                    }), 
+                    KeyCode::F4 => interrupts::without_interrupts(|| { 
+                        WRITER.lock().set_foreground_color(Color::Green); 
+                    }), 
+                    KeyCode::F5 => interrupts::without_interrupts(|| { 
+                        WRITER.lock().set_foreground_color(Color::Cyan); 
+                    }), 
+                    KeyCode::F6 => interrupts::without_interrupts(|| { 
+                        WRITER.lock().set_foreground_color(Color::Blue); 
+                    }), 
+                    KeyCode::F7 => interrupts::without_interrupts(|| { 
+                        WRITER.lock().set_foreground_color(Color::Magenta); 
+                    }), 
+                    KeyCode::F8 => interrupts::without_interrupts(|| { 
+                        WRITER.lock().set_foreground_color(Color::Pink); 
+                    }),
+                    key => print!("{:?}", key)
+                }
             }
         }
     }
