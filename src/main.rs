@@ -21,7 +21,7 @@ pub extern "C" fn _start() -> ! {
 
     println!("It didn't break the code");
 
-    loop { }
+    blog_os::hlt_loop();
 }
 
 // Panic handlers
@@ -29,7 +29,7 @@ pub extern "C" fn _start() -> ! {
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     println!("{}", info);
-    loop { }
+    blog_os::hlt_loop();
 }
 
 #[cfg(test)]
