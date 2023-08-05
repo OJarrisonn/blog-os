@@ -4,6 +4,7 @@ use volatile::Volatile;
 use lazy_static::lazy_static;
 use spin::Mutex;
 
+const CURSOR_CHAR: u8 = 0xb3;
 
 // Defining a static writer
 lazy_static! {
@@ -110,9 +111,8 @@ impl Writer {
                 });
                 self.column_position += 1;
                 col += 1;
-                let mut sc = self.buffer.chars[row][col].read();
-                sc.color_code = ColorCode::new(Color::Black, Color::DarkGray);
-                self.buffer.chars[row][col].write(sc);
+
+                self.buffer.chars[row][col].write(ScreenChar { ascii_character: CURSOR_CHAR, color_code: ColorCode::new(Color::DarkGray, Color::Black) });
             
             }
         }
@@ -129,10 +129,7 @@ impl Writer {
             self.buffer.chars[row][self.column_position].write(sc);
             
             self.column_position -= 1;
-            self.buffer.chars[row][self.column_position].write(ScreenChar { 
-                ascii_character: b' ', 
-                color_code: ColorCode::new(Color::Black, Color::DarkGray) 
-            });
+            self.buffer.chars[row][self.column_position].write(ScreenChar { ascii_character: CURSOR_CHAR, color_code: ColorCode::new(Color::DarkGray, Color::Black) });
         }
 
     }
@@ -156,9 +153,8 @@ impl Writer {
 
         self.column_position = 0;
 
-        self.buffer.chars[BUFFER_HEIGHT - 1][self.column_position].write(ScreenChar { 
-            ascii_character: b' ', color_code: ColorCode::new(Color::Black, Color::DarkGray)  
-        });
+        self.buffer.chars[BUFFER_HEIGHT - 1][self.column_position].write(ScreenChar { ascii_character: CURSOR_CHAR, color_code: ColorCode::new(Color::DarkGray, Color::Black) });
+
     }
 
     fn clear_row(&mut self, row: usize) {
