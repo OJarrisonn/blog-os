@@ -8,13 +8,14 @@
 
 use core::panic::PanicInfo;
 
-
+extern crate alloc;
 
 pub mod vga_buffer;
 pub mod serial;
 pub mod interrupts;
 pub mod gdt;
 pub mod memory;
+pub mod allocator;
 
 
 pub fn init() {
